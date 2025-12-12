@@ -1,0 +1,26 @@
+{
+  "latest_version": "1.0.0",
+  "mandatory_update": true,
+  "min_version": "1.0.0",
+  "require_license": true,
+
+  "valid_keys": [
+        "JOHA-01",
+        "YULI-01",
+        "JOSE-01",
+        "GIANNE-01",
+        "ROBERTO-01",
+        "CAMI-01",
+        "MANU-01",
+        "SANDRI-01",
+        "MAFER-01",
+        "ALI-01",
+        "CARLA-01",
+        "YANELI-01",
+        "BRUNO-01",
+        "CHICHO-01"
+  ],
+
+  "message": "All good, my dude!.",
+  "download_url": "https://your-drive-link.com/Brand_Downloader.dmg"
+}
