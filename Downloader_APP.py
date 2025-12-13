@@ -1,94 +1,151 @@
+# VENI VIDI VICI
+# BY ROBERTO LIZZA
+
 import csv
-import os
 import urllib.request
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox
 from security_check import security_check
 
-# Ensure security passes first
-if not security_check():
-    print("Security check failed. Exiting.")
-    exit()
+# ----------------------
+# GUI HELPERS
+# ----------------------
 
-print("Security check passed. Starting downloader...\n")
+def choose_csv_gui():
+    """Opens a dialog to choose a CSV file. Returns path or None."""
+    root = tk.Tk()
+    root.withdraw()  # hide empty root window
 
-# ------------------------- CONFIGURABLE VALUES -------------------------
+    file_path = filedialog.askopenfilename(
+        title="Select your CSV file",
+        filetypes=[("CSV Files", "*.csv")]
+    )
 
-CSV_FILE = "input.csv"            # The CSV file the user will provide
-OUTPUT_FOLDER = "Downloaded"      # Folder where images are stored
-
-# Names of possible image columns
-IMAGE_COLUMNS = ["Imagen", "Imagen_2", "Image", "Image_2"]
-
-# ----------------------------------------------------------------------
-
-
-def ensure_folder(folder):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    root.destroy()
+    return file_path if file_path else None
 
 
-def sanitize_filename(name):
-    """Basic cleaner to avoid invalid file characters."""
-    invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
-    for char in invalid:
-        name = name.replace(char, "_")
-    return name.strip()
+def choose_column_gui(headers):
+    """
+    Displays a list of headers. User double-clicks one.
+    Returns selected header or None.
+    """
+    selected = {"value": None}
+
+    def on_double_click(event):
+        w = event.widget
+        index = w.curselection()
+        if index:
+            selected["value"] = w.get(index)
+            top.destroy()
+
+    top = tk.Tk()
+    top.title("Select Naming Column")
+
+    label = tk.Label(top, text="Double-click the column to name your images:")
+    label.pack(pady=5)
+
+    listbox = tk.Listbox(top, width=40, height=10)
+    listbox.pack(padx=10, pady=10)
+
+    for h in headers:
+        listbox.insert(tk.END, h)
+
+    listbox.bind("<Double-Button-1>", on_double_click)
+
+    top.mainloop()
+
+    return selected["value"]
 
 
-def download_image(url, path):
-    try:
-        urllib.request.urlretrieve(url, path)
-        return True
-    except Exception as e:
-        print(f"   [ERROR] Failed: {url}")
-        print(f"           {e}")
-        return False
+# ----------------------
+# DOWNLOADER LOGIC
+# ----------------------
 
+def download_images(csv_path, naming_column):
+    output_folder = "Downloaded_Images"
+    os.makedirs(output_folder, exist_ok=True)
+
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = reader.fieldnames
+
+        image_columns = [h for h in headers if h.lower().startswith("imagen")]
+
+        if not image_columns:
+            messagebox.showerror("Error", "No columns named Imagen or Imagen_2 found.")
+            return
+
+        count = 0
+        failures = []
+
+        for row in reader:
+            base_name = row[naming_column].strip().replace(" ", "_")
+
+            for i, img_col in enumerate(image_columns, start=1):
+                url = row.get(img_col, "").strip()
+
+                if not url or not url.startswith("http"):
+                    failures.append(f"{base_name} → No valid URL in column {img_col}")
+                    continue
+
+                # filename example: Marca.jpg or Marca_2.jpg
+                suffix = "" if i == 1 else f"_{i}"
+                ext = os.path.splitext(url)[1]
+                if ext.lower() not in [".jpg", ".jpeg", ".png", ".webp"]:
+                    ext = ".jpg"
+
+                filename = f"{base_name}{suffix}{ext}"
+                filepath = os.path.join(output_folder, filename)
+
+                try:
+                    urllib.request.urlretrieve(url, filepath)
+                    count += 1
+                except Exception as e:
+                    failures.append(f"{base_name} ({img_col}) → Download failed: {e}")
+
+        # Show result summary
+        msg = f"Downloaded: {count}\nFailed: {len(failures)}"
+        if failures:
+            msg += "\n\nFailures:\n" + "\n".join(failures)
+
+        messagebox.showinfo("Download Complete", msg)
+
+
+# ----------------------
+# MAIN APP LOGIC
+# ----------------------
 
 def main():
-    ensure_folder(OUTPUT_FOLDER)
+    # Run security first
+    if not security_check():
+        messagebox.showerror("Security Check", "Security validation failed. Exiting.")
+        return
 
-    # 1. Load CSV and ask user which column defines the filenames
-    with open(CSV_FILE, newline='', encoding="utf-8") as f:
+    # Step 1 — Select CSV
+    csv_file = choose_csv_gui()
+    if not csv_file:
+        messagebox.showwarning("Cancelled", "No CSV selected.")
+        return
+
+    # Step 2 — Read headers
+    with open(csv_file, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        header = reader.fieldnames
+        headers = reader.fieldnames
 
-        print("Available columns:")
-        for i, col in enumerate(header, start=1):
-            print(f"{i}. {col}")
+    if not headers:
+        messagebox.showerror("Error", "CSV file has no headers.")
+        return
 
-        choice = input("\nEnter the number of the column to name the images: ")
-        choice = int(choice) - 1
-        name_column = header[choice]
+    # Step 3 — GUI header picker
+    naming_column = choose_column_gui(headers)
+    if not naming_column:
+        messagebox.showwarning("Cancelled", "No column selected.")
+        return
 
-        print(f"\nNaming images based on column: {name_column}\n")
-
-        # 2. Loop rows
-        for row_index, row in enumerate(reader, start=2):
-            base_name = sanitize_filename(row[name_column])
-
-            image_links = []
-            for col in IMAGE_COLUMNS:
-                if col in row and row[col].strip():
-                    image_links.append(row[col].strip())
-
-            if not image_links:
-                print(f"[Row {row_index}] No image URLs found.")
-                continue
-
-            # 3. Download each image
-            for idx, url in enumerate(image_links, start=1):
-                ext = url.split(".")[-1].lower()
-                if ext not in ["jpg", "jpeg", "png", "gif", "webp"]:
-                    ext = "jpg"
-
-                name = base_name if idx == 1 else f"{base_name}_{idx}"
-                filename = f"{name}.{ext}"
-                filepath = os.path.join(OUTPUT_FOLDER, filename)
-
-                print(f"[Row {row_index}] Downloading {url} → {filename}")
-                download_image(url, filepath)
-
-    print("\nDone!")
+    # Step 4 — Download images
+    download_images(csv_file, naming_column)
 
 
 if __name__ == "__main__":
