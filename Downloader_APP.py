@@ -95,7 +95,7 @@ def download_images(csv_path, naming_column, url_columns):
 
 def main():
     # Security check first
-    if not security_check():
+    if not security_check.validate_license():
         messagebox.showerror("Security Error", "Security validation failed.")
         return
 
@@ -129,3 +129,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
