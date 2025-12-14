@@ -1,85 +1,141 @@
+# VENI VIDI VICI
+# BY ROBERTO LIZZA
+# security_check.py
+
 import json
 import os
+import time
 import requests
-from datetime import datetime
+import tkinter as tk
+from tkinter import messagebox, simpledialog
 
-REMOTE_JSON_URL = "https://raw.githubusercontent.com/Graverobertt/News/refs/heads/main/Version.json"   # <-- replace with your Drive/GitHub link
-LOCAL_LICENSE_FILE = "license_key.txt"
-CURRENT_VERSION = "1.0.0"
+# ------------------------------------------------------
+# CONFIG
+# ------------------------------------------------------
 
-def compare_versions(v1, v2):
-    """Return True if v1 >= v2."""
-    a = [int(x) for x in v1.split(".")]
-    b = [int(x) for x in v2.split(".")]
-    return a >= b
+LICENSE_URL = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/license.json"
+REQUEST_TIMEOUT = 5
 
+CACHE_MAX_AGE = 60 * 60 * 24 * 3  # 3 days
+APP_NAME = "ImageDownloader"
 
-def load_remote_config():
-    """Fetch Version.json from remote and return as dict."""
+CACHE_DIR = os.path.join(
+    os.path.expanduser("~"),
+    "Library",
+    "Application Support",
+    APP_NAME
+)
+CACHE_FILE = os.path.join(CACHE_DIR, "license_cache.json")
+
+# ------------------------------------------------------
+# PUBLIC API
+# ------------------------------------------------------
+
+def validate_license():
+    """
+    Main entry point.
+    Returns True if app is allowed to run.
+    """
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+    cached = _load_cache()
+
+    # 1) Try remote first (authoritative)
+    remote = _fetch_remote()
+
+    if remote:
+        if not remote.get("require_license", False):
+            return True
+
+        licenses = remote.get("licenses", {})
+
+        # Determine license code
+        license_code = cached.get("license") if cached else _ask_license()
+        if not license_code:
+            return False
+
+        lic = licenses.get(license_code)
+
+        if not lic:
+            _error(
+                "Invalid license",
+                "This license key does not exist.\n\nPlease contact support."
+            )
+            return False
+
+        if not lic.get("active", False):
+            _error(
+                "License disabled",
+                "Your access has been disabled.\n\nPlease contact support."
+            )
+            return False
+
+        # Success → refresh cache
+        _write_cache(license_code)
+        return True
+
+    # 2) Remote failed → fallback to cache
+    if cached and _cache_is_fresh(cached):
+        return True
+
+    _error(
+        "License check failed",
+        "Could not verify your license.\n\n"
+        "Please connect to the internet."
+    )
+    return False
+
+# ------------------------------------------------------
+# INTERNALS
+# ------------------------------------------------------
+
+def _fetch_remote():
     try:
-        r = requests.get(REMOTE_JSON_URL, timeout=5)
+        url = LICENSE_URL + "?t=" + str(int(time.time()))
+        r = requests.get(url, timeout=REQUEST_TIMEOUT)
         r.raise_for_status()
         return r.json()
-    except Exception as e:
-        print(f"[SECURITY] Could not fetch remote config: {e}")
+    except Exception:
         return None
 
 
-def check_license(valid_keys):
-    """Checks/asks for a license key and stores it locally."""
-    # If already stored, validate it
-    if os.path.exists(LOCAL_LICENSE_FILE):
-        saved = open(LOCAL_LICENSE_FILE, "r").read().strip()
-        if saved in valid_keys:
-            print("[LICENCE] Existing license accepted.")
-            return True
-        else:
-            print("[LICENCE] Saved license is invalid.")
-
-    # Ask user for a key
-    key = input("Enter your license key: ").strip()
-    if key in valid_keys:
-        with open(LOCAL_LICENSE_FILE, "w") as f:
-            f.write(key)
-        print("[LICENCE] License accepted and saved.")
-        return True
-
-    print("[LICENCE] Invalid license. Exiting...")
-    return False
+def _ask_license():
+    root = tk.Tk()
+    root.withdraw()
+    code = simpledialog.askstring(
+        "License required",
+        "Enter your license key:"
+    )
+    root.destroy()
+    return code.strip() if code else None
 
 
-def security_check():
-    """Main security validation (license + forced update)."""
-    print("[SECURITY] Checking remote configuration...")
+def _write_cache(code):
+    payload = {
+        "license": code,
+        "validated_at": int(time.time())
+    }
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
 
-    remote = load_remote_config()
-    if not remote:
-        print("[SECURITY] Could not validate remote config. Exiting for safety.")
-        return False
 
-    valid_keys = remote.get("valid_keys", [])
-    mandatory_update = remote.get("mandatory_update", True)
-    latest_version = remote.get("latest_version", CURRENT_VERSION)
-    min_version = remote.get("min_version", CURRENT_VERSION)
+def _load_cache():
+    if not os.path.exists(CACHE_FILE):
+        return None
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
-    # 1. LICENSE CHECK ---------------------------------------------------------
-    if not check_license(valid_keys):
-        return False
 
-    # 2. VERSION / UPDATE CHECK ------------------------------------------------
-    # If the version is below min_version → force exit
-    if not compare_versions(CURRENT_VERSION, min_version):
-        print("\n***************************************")
-        print("  Your version is too old and must be updated.")
-        print("***************************************\n")
-        return False
+def _cache_is_fresh(data):
+    ts = data.get("validated_at", 0)
+    return (time.time() - ts) <= CACHE_MAX_AGE
 
-    # If update is mandatory and newer version exists
-    if mandatory_update and not compare_versions(CURRENT_VERSION, latest_version):
-        print("\n***************************************")
-        print("  A mandatory update is required.")
-        print("***************************************\n")
-        return False
 
-    print("[SECURITY] Security + License OK.")
-    return True
+def _error(title, msg):
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showerror(title, msg)
+    root.destroy()
