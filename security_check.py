@@ -13,7 +13,7 @@ from tkinter import messagebox, simpledialog
 # CONFIG
 # ------------------------------------------------------
 
-LICENSE_URL = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/license.json"
+LICENSE_URL = "https://raw.githubusercontent.com/Graverobertt/News/refs/heads/main/Version.json"
 REQUEST_TIMEOUT = 5
 
 CACHE_MAX_AGE = 60 * 60 * 24 * 3  # 3 days
@@ -25,7 +25,7 @@ CACHE_DIR = os.path.join(
     "Application Support",
     APP_NAME
 )
-CACHE_FILE = os.path.join(CACHE_DIR, "license_cache.json")
+CACHE_FILE = os.path.join(CACHE_DIR, "Version.json")
 
 # ------------------------------------------------------
 # PUBLIC API
