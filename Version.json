@@ -4,23 +4,65 @@
   "min_version": "1.0.0",
   "require_license": true,
 
-  "valid_keys": [
-        "JOHA-01",
-        "YULI-01",
-        "JOSE-01",
-        "GIANNE-01",
-        "ROBERTO-01",
-        "CAMI-01",
-        "MANU-01",
-        "SANDRI-01",
-        "MAFER-01",
-        "ALI-01",
-        "CARLA-01",
-        "YANELI-01",
-        "BRUNO-01",
-        "CHICHO-01"
-  ],
+  "licenses": {
+    "JOHA-01": {
+      "designer": "Johanna",
+      "active": true
+    },
+    "YULI-01": {
+      "designer": "Yuliana",
+      "active": true
+    },
+    "JOSE-01": {
+      "designer": "Jose",
+      "active": false
+    },
+    "GIANNE-01": {
+      "designer": "Gianne",
+      "active": true
+    },
+    "ROBERTO-01": {
+      "designer": "Roberto",
+      "active": true
+    },
+    "CAMI-01": {
+      "designer": "Camila",
+      "active": true
+    },
+    "MANU-01": {
+      "designer": "Manuel",
+      "active": true
+    },
+    "SANDRI-01": {
+      "designer": "Sandra",
+      "active": false
+    },
+    "MAFER-01": {
+      "designer": "Mafer",
+      "active": true
+    },
+    "ALI-01": {
+      "designer": "Alison",
+      "active": true
+    },
+    "CARLA-01": {
+      "designer": "Carla",
+      "active": true
+    },
+    "YANELI-01": {
+      "designer": "Yaneli",
+      "active": true
+    },
+    "BRUNO-01": {
+      "designer": "Bruno",
+      "active": true
+    },
+    "CHICHO-01": {
+      "designer": "Chicho",
+      "active": true
+    }
+  },
 
-  "message": "All good, my dude!.",
+  "message": "All good, my dude!",
   "download_url": "https://your-drive-link.com/Brand_Downloader.dmg"
 }
