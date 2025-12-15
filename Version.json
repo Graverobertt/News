@@ -17,11 +17,11 @@
       "designer": "Jose",
       "active": false
     },
-    "GIANNE-01": {
-      "designer": "Gianne",
+    "GIANE-01": {
+      "designer": "Gianella",
       "active": true
     },
-    "ROBERTO-01": {
+    "ROBERTO-02": {
       "designer": "Roberto",
       "active": true
     },
@@ -42,7 +42,7 @@
       "active": true
     },
     "ALI-01": {
-      "designer": "Alison",
+      "designer": "Alissa",
       "active": true
     },
     "CARLA-01": {
@@ -66,3 +66,4 @@
   "message": "All good, my dude!",
   "download_url": "https://your-drive-link.com/Brand_Downloader.dmg"
 }
+
