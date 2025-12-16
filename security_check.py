@@ -50,9 +50,22 @@ def validate_license():
         licenses = remote.get("licenses", {})
 
         # Determine license code
-        license_code = cached.get("license") if cached else _ask_license()
-        if not license_code:
-            return False
+        license_code = cached.get("license")
+
+        if not license_code:  
+            license_code = _ask_license()
+            if not license_code:
+                return False
+
+        # Retry loop
+        while True:
+            lic = licenses.get(license_code)
+            if lic and lic.get("active", False):
+                break
+            license_code = _ask_license(retry=True)
+            if not license_code:
+                return False
+
 
         lic = licenses.get(license_code)
 
@@ -99,13 +112,19 @@ def _fetch_remote():
         return None
 
 
-def _ask_license():
+def _ask_license(retry=False):
     root = tk.Tk()
     root.withdraw()
+
+    prompt = "Enter your license key:"
+    if retry:
+        prompt = "Invalid or inactive license.\n\nPlease enter your license key again:"
+
     code = simpledialog.askstring(
         "License required",
-        "Enter your license key:"
+        prompt
     )
+    
     root.destroy()
     return code.strip() if code else None
 
